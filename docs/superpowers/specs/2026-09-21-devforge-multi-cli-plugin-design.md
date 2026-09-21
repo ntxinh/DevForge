@@ -8,16 +8,16 @@
 DevForge holds one skill, `jira-issue-to-markdown`, and nothing that lets a coding
 agent install it. The skill itself is written for Claude Code: it names Atlassian MCP
 tools directly and calls `present_files`, neither of which exists in Codex, Devin,
-OpenCode, Pi, Oh My Pi, or Antigravity.
+OpenCode, Pi, Oh My Pi, Cursor, or Antigravity.
 
-The goal is a plugin that installs on all seven CLIs from a self-hosted marketplace,
+The goal is a plugin that installs on all eight CLIs from a self-hosted marketplace,
 carrying skills that work the same on each.
 
 ## Scope
 
 **In scope**
 
-- Plugin manifests for Claude Code, Codex, Devin CLI, OpenCode, Pi, Oh My Pi, Antigravity.
+- Plugin manifests for Claude Code, Codex, Devin CLI, OpenCode, Pi, Oh My Pi, Cursor, Antigravity.
 - A self-hosted marketplace in this repository.
 - Rework of `jira-issue-to-markdown` for host portability, plus a trim and an epic template.
 - Version synchronization across manifests, a manifest test, and CI that runs it.
@@ -27,7 +27,7 @@ carrying skills that work the same on each.
 - Session-start bootstrap and skill auto-triggering. DevForge is a skill pack: each host
   discovers the skills, and the user invokes them.
 - Submission to third-party catalogs such as `openai/plugins`.
-- Cursor, Kimi, Muse, Hermes, Gemini, Factory Droid.
+- Kimi, Muse, Hermes, Gemini, Factory Droid.
 - New skills beyond the existing one.
 
 ## Identity
@@ -81,8 +81,8 @@ Files deliberately absent, and why:
 - `hooks/` and `hooks/session-start` — no bootstrap, so no hook.
 - `.pi/extensions/*.ts` — in `superpowers` that extension exists only to inject the
   bootstrap. Pi discovers skills from `package.json`.
-- `.cursor-plugin/`, `.kimi-plugin/`, `.muse-plugin/`, `.hermes-plugin/`,
-  `gemini-extension.json` — hosts outside the seven.
+- `.kimi-plugin/`, `.muse-plugin/`, `.hermes-plugin/`,
+  `gemini-extension.json` — hosts outside the eight.
 - `.antigravity-plugin/` — Antigravity reads the Claude-shaped manifest.
 - `.omp-plugin/marketplace.json` — omp reads `.claude-plugin/marketplace.json` as its
   marketplace-catalog fallback, so a second catalog would only duplicate it.
@@ -100,6 +100,7 @@ Files deliberately absent, and why:
 | OpenCode | `.opencode/plugins/devforge.js`, `index.js`, `package.json` `main` | the JS plugin registers `skills/` | config `"plugins": ["devforge@git+https://github.com/ntxinh/DevForge.git"]` |
 | Pi | `package.json` `"pi": {"skills": ["./skills"]}` | declarative | `pi install git:github.com/ntxinh/DevForge` |
 | Oh My Pi | `.claude-plugin/marketplace.json` (omp's fallback catalog) | `skills/` at plugin root, by convention | `omp plugin marketplace add ntxinh/DevForge` then `omp plugin install devforge@devforge-marketplace` |
+| Cursor | `.cursor-plugin/plugin.json` with `"skills": "./skills/"` | explicit path in the manifest | local plugin install from a checkout |
 
 ### OpenCode plugin
 
@@ -191,6 +192,7 @@ and rollup acceptance criteria. The issue-type map row for Epic changes from "us
 | `.claude-plugin/marketplace.json` | `plugins.0.version` |
 | `.codex-plugin/plugin.json` | `version` |
 | `.devin-plugin/plugin.json` | `version` |
+| `.cursor-plugin/plugin.json` | `version` |
 
 `scripts/bump-version.sh <major|minor|patch|X.Y.Z>` reads that map, rewrites each field
 with `jq`, and prints the resulting diff. It is roughly 40 lines and fails with a clear
@@ -223,18 +225,17 @@ development machine. Each is installed from a local checkout or the pushed
 repository, and the check is that `jira-issue-to-markdown` appears in that host's
 skill list and can be invoked.
 
-`pi` is not installed. Pi ships on its declarative manifest and is marked untested
-in the README until someone verifies it.
+`pi` and `cursor` are not installed. Both ship on their manifests and are marked
+untested in the README until someone verifies them.
 
 ## Risks
 
 - **Manifest drift.** The shapes are taken from `superpowers` v6.4.1; a CLI may have
-  changed its plugin format since. The smoke test across five hosts is what catches this,
-  and it runs before the first release.
+  changed its plugin format since. The smoke test across six hosts is what catches this,
 - **Devin marketplace file.** Whether `devin plugins install` needs
   `.agents/plugins/marketplace.json` alongside `.devin-plugin/plugin.json` is unresolved.
   The Devin smoke test decides it; adding the file is a small change if required.
-- **Pi unverified.** No local `pi` binary. Shipped and flagged, not silently claimed to work.
+- **Pi and Cursor unverified.** No local `pi` or `cursor` binary. Both ship flagged, not silently claimed to work.
 - **Codex distribution.** Only local installation is supported. Listing in
   `openai/plugins` is their review process and is out of scope.
 
@@ -249,4 +250,4 @@ in the README until someone verifies it.
 3. The skill converts a Jira issue on a host with no Atlassian MCP, falling back down the
    ladder without inventing content.
 4. `tests/manifests.test.sh` passes locally and in CI.
-5. `scripts/bump-version.sh patch` moves all five version fields together.
+5. `scripts/bump-version.sh patch` moves all six version fields together.

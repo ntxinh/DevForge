@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Package DevForge as a skill pack installable on Claude Code, Codex, Devin CLI, OpenCode, Pi, Oh My Pi, and Antigravity from a self-hosted marketplace, with the `jira-issue-to-markdown` skill reworked so it works on every one of them.
+**Goal:** Package DevForge as a skill pack installable on Claude Code, Codex, Devin CLI, OpenCode, Pi, Oh My Pi, Cursor, and Antigravity from a self-hosted marketplace, with the `jira-issue-to-markdown` skill reworked so it works on every one of them.
 
 **Architecture:** One `skills/` directory is the single source of truth. Each host gets the smallest manifest that points at it — JSON manifests for Claude Code/Antigravity, Codex, and Devin; a declarative `pi` block in `package.json`; and one dependency-free JavaScript plugin for OpenCode, which has no convention-based skill discovery. Oh My Pi needs no manifest of its own: it discovers `skills/` by convention and reads `.claude-plugin/marketplace.json` as its marketplace-catalog fallback. `.version-bump.json` maps every version field so one script keeps them in step, and shell tests assert the manifests and skills stay valid.
 
@@ -37,6 +37,7 @@
 | `LICENSE`, `.gitignore` | MIT text, ignore `node_modules` | 1 |
 | `.codex-plugin/plugin.json` | Codex manifest, explicit `skills` path | 2 |
 | `.devin-plugin/plugin.json` | Devin CLI manifest | 2 |
+| `.cursor-plugin/plugin.json` | Cursor manifest, explicit `skills` path | 2 |
 | `.opencode/plugins/devforge.js` | OpenCode V1 + V2 skill registration | 3 |
 | `index.js` | re-export for OpenCode V2 directory form | 3 |
 | `.opencode/INSTALL.md` | OpenCode install instructions | 3 |
@@ -121,7 +122,7 @@ while IFS=$'\t' read -r file field; do
 done < <(jq -r '.files[] | "\(.path)\t\(.field)"' .version-bump.json)
 
 # 2. Required identity fields on every plugin manifest present on disk
-for manifest in .claude-plugin/plugin.json .codex-plugin/plugin.json .devin-plugin/plugin.json; do
+for manifest in .claude-plugin/plugin.json .codex-plugin/plugin.json .devin-plugin/plugin.json .cursor-plugin/plugin.json; do
   [ -f "$manifest" ] || continue
   for field in .name .description .version .author.name .author.email .license .homepage .repository; do
     value=$(jq -r "$field // empty" "$manifest")
@@ -291,20 +292,21 @@ git commit -m "feat: add Claude Code plugin manifest, marketplace, and manifest 
 
 ---
 
-### Task 2: Codex and Devin manifests
+### Task 2: Codex, Devin, and Cursor manifests
 
 **Files:**
 - Create: `.codex-plugin/plugin.json`
 - Create: `.devin-plugin/plugin.json`
+- Create: `.cursor-plugin/plugin.json`
 - Modify: `.version-bump.json`
 
 **Interfaces:**
-- Consumes: `.version-bump.json` `files` array and the version `0.1.0` from Task 1; `tests/manifests.test.sh` already checks `.codex-plugin/plugin.json` and `.devin-plugin/plugin.json` when they exist.
+- Consumes: `.version-bump.json` `files` array and the version `0.1.0` from Task 1; `tests/manifests.test.sh` already checks `.codex-plugin/plugin.json`, `.devin-plugin/plugin.json`, and `.cursor-plugin/plugin.json` when they exist.
 - Produces: nothing new for later tasks.
 
 - [ ] **Step 1: Write the failing test**
 
-No new test file. Extend the existing list instead — add both manifests to `.version-bump.json`, which is what `tests/manifests.test.sh` iterates:
+No new test file. Extend the existing list instead — add all three manifests to `.version-bump.json`, which is what `tests/manifests.test.sh` iterates:
 
 ```json
 {
@@ -313,7 +315,8 @@ No new test file. Extend the existing list instead — add both manifests to `.v
     { "path": ".claude-plugin/plugin.json", "field": "version" },
     { "path": ".claude-plugin/marketplace.json", "field": "plugins.0.version" },
     { "path": ".codex-plugin/plugin.json", "field": "version" },
-    { "path": ".devin-plugin/plugin.json", "field": "version" }
+    { "path": ".devin-plugin/plugin.json", "field": "version" },
+    { "path": ".cursor-plugin/plugin.json", "field": "version" }
   ]
 }
 ```
@@ -323,7 +326,7 @@ No new test file. Extend the existing list instead — add both manifests to `.v
 Run: `tests/manifests.test.sh`
 Expected: FAIL with
 `FAIL: .codex-plugin/plugin.json: listed in .version-bump.json but missing`
-and the same for `.devin-plugin/plugin.json`; exit code 1.
+and the same for `.devin-plugin/plugin.json` and `.cursor-plugin/plugin.json`; exit code 1.
 
 - [ ] **Step 3: Write minimal implementation**
 
@@ -395,16 +398,42 @@ Create `.devin-plugin/plugin.json`. Devin finds `skills/` by convention, so no `
 }
 ```
 
+Create `.cursor-plugin/plugin.json`. Cursor reads the skills path from the manifest, like Codex. The `hooks` field from the superpowers manifest is dropped — DevForge ships no hooks:
+
+```json
+{
+  "name": "devforge",
+  "displayName": "DevForge",
+  "description": "DevForge skills for coding agents: turn a Jira issue into a developer-ready markdown spec",
+  "version": "0.1.0",
+  "author": {
+    "name": "ntxinh",
+    "email": "nguyentrucxjnh@gmail.com"
+  },
+  "homepage": "https://github.com/ntxinh/DevForge",
+  "repository": "https://github.com/ntxinh/DevForge",
+  "license": "MIT",
+  "keywords": [
+    "skills",
+    "jira",
+    "spec",
+    "requirements",
+    "business-analysis"
+  ],
+  "skills": "./skills/"
+}
+```
+
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `tests/manifests.test.sh`
-Expected: PASS — five version fields reported `ok:`, plus `ok:` identity lines for all three plugin manifests; exit code 0.
+Expected: PASS — six version fields reported `ok:`, plus `ok:` identity lines for all four plugin manifests; exit code 0.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add .codex-plugin .devin-plugin .version-bump.json
-git commit -m "feat: add Codex and Devin CLI plugin manifests"
+git add .codex-plugin .devin-plugin .cursor-plugin .version-bump.json
+git commit -m "feat: add Codex, Devin, and Cursor plugin manifests"
 ```
 
 ---
@@ -1390,7 +1419,7 @@ git commit -m "feat: add an epic template to jira-issue-to-markdown"
 No automated test. The check is that every host in the spec's matrix appears with an install command:
 
 ```bash
-for host in "Claude Code" "Antigravity" "Codex" "Devin" "OpenCode" "Pi" "Oh My Pi"; do
+for host in "Claude Code" "Antigravity" "Codex" "Devin" "OpenCode" "Pi" "Oh My Pi" "Cursor"; do
   grep -qF -- "$host" README.md || echo "MISSING: $host"
 done
 ```
@@ -1398,7 +1427,7 @@ done
 - [ ] **Step 2: Run test to verify it fails**
 
 Run the loop above.
-Expected: `grep: README.md: No such file or directory` seven times and seven `MISSING:` lines.
+Expected: `grep: README.md: No such file or directory` eight times and eight `MISSING:` lines.
 
 - [ ] **Step 3: Write minimal implementation**
 
@@ -1475,6 +1504,14 @@ omp plugin install devforge@devforge-marketplace
 
 omp reads `.claude-plugin/marketplace.json` as its catalog and discovers
 `skills/` by convention. For a local checkout: `omp plugin link <path>`.
+
+### Cursor
+
+Clone the repository and add it as a local plugin; `.cursor-plugin/plugin.json`
+points Cursor at `./skills/`. DevForge is not listed in the Cursor plugin
+marketplace.
+
+**Untested.** No `cursor` binary on the development machine; reports welcome.
 
 ## Using the Jira skill
 
@@ -1553,7 +1590,7 @@ git commit -m "docs: add README with the per-CLI install matrix"
 - Consumes: every manifest and the README from Tasks 1–3 and 9.
 - Produces: `docs/smoke-test.md`, the recorded result per host, which is the evidence that the plugin actually installs.
 
-This task is manual. `claude`, `codex`, `devin`, `opencode`, `agy`, and `omp` are installed on this machine; `pi` is not.
+This task is manual. `claude`, `codex`, `devin`, `opencode`, `agy`, and `omp` are installed on this machine; `pi` and `cursor` are not.
 
 - [ ] **Step 1: Write the checklist**
 
@@ -1578,6 +1615,7 @@ be invoked.
 | OpenCode | config `"plugins": ["<absolute path to this checkout>"]` | | | |
 | Oh My Pi | `omp plugin marketplace add <local path or ntxinh/DevForge>` then `omp plugin install devforge@devforge-marketplace`; for a checkout, `omp plugin link <path>` | | | |
 | Pi | `pi install git:github.com/ntxinh/DevForge` | | | not installed locally |
+| Cursor | local plugin install from this checkout | | | not installed locally |
 
 ## Notes
 
@@ -1658,10 +1696,11 @@ git commit -m "docs: record install smoke test results per host"
 | Pi declarative skills entry | 1 |
 | Codex manifest with explicit `skills` path | 2 |
 | Devin manifest | 2 |
+| Cursor manifest with explicit `skills` path | 2 |
 | Oh My Pi via the Claude-shaped marketplace fallback | 1 (file), 9 (docs), 10 (verified) |
 | Antigravity via the Claude-shaped manifest | 1 (file), 10 (verified) |
 | OpenCode plugin, V1 + V2, bootstrap stripped | 3 |
-| `.version-bump.json` mapping five fields | 1, 2 |
+| `.version-bump.json` mapping six fields | 1, 2 |
 | `scripts/bump-version.sh` | 4 |
 | Manifest test | 1 |
 | CI running the tests | 5 |
@@ -1672,7 +1711,7 @@ git commit -m "docs: record install smoke test results per host"
 | Worked example moved to `references/` | 7 |
 | Epic template | 8 |
 | Per-CLI install matrix | 9 |
-| Manual smoke test across six hosts, Pi flagged untested | 10 |
+| Manual smoke test across six hosts, Pi and Cursor flagged untested | 10 |
 | Risk: Devin marketplace file undecided | 10 |
 
 No spec requirement is unclaimed.
