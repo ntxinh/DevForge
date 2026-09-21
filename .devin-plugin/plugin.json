@@ -1,0 +1,19 @@
+{
+  "name": "devforge",
+  "version": "0.1.0",
+  "description": "DevForge skills for coding agents: turn a Jira issue into a developer-ready markdown spec",
+  "author": {
+    "name": "ntxinh",
+    "email": "nguyentrucxjnh@gmail.com"
+  },
+  "homepage": "https://github.com/ntxinh/DevForge",
+  "repository": "https://github.com/ntxinh/DevForge",
+  "license": "MIT",
+  "keywords": [
+    "skills",
+    "jira",
+    "spec",
+    "requirements",
+    "business-analysis"
+  ]
+}
