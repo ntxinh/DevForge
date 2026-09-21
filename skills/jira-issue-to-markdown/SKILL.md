@@ -64,7 +64,7 @@ Map the Jira `issuetype` field to the right template in `assets/`:
 | Story, User Story, Improvement, Feature | `assets/story-template.md` |
 | Task, Sub-task, Technical Task, Chore | `assets/task-template.md` |
 | Spike, Research, Investigation | `assets/spike-template.md` |
-| Epic | use `story-template.md` (note in the file that this is an epic-level summary; child tickets needed) |
+| Epic | `assets/epic-template.md` |
 
 If the type is unclear, ask the user — don't guess. The wrong template misses important sections.
 
