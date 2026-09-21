@@ -1,0 +1,20 @@
+{
+  "name": "devforge-marketplace",
+  "description": "Self-hosted marketplace for the DevForge skill pack",
+  "owner": {
+    "name": "ntxinh",
+    "email": "nguyentrucxjnh@gmail.com"
+  },
+  "plugins": [
+    {
+      "name": "devforge",
+      "description": "DevForge skills for coding agents: turn a Jira issue into a developer-ready markdown spec",
+      "version": "0.1.0",
+      "source": "./",
+      "author": {
+        "name": "ntxinh",
+        "email": "nguyentrucxjnh@gmail.com"
+      }
+    }
+  ]
+}
