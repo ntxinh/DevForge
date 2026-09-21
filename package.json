@@ -1,0 +1,29 @@
+{
+  "name": "devforge",
+  "version": "0.1.0",
+  "description": "DevForge skills for coding agents: Jira issue to developer-ready markdown spec",
+  "type": "module",
+  "main": ".opencode/plugins/devforge.js",
+  "license": "MIT",
+  "author": {
+    "name": "ntxinh",
+    "email": "nguyentrucxjnh@gmail.com"
+  },
+  "homepage": "https://github.com/ntxinh/DevForge",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ntxinh/DevForge.git"
+  },
+  "keywords": [
+    "pi-package",
+    "skills",
+    "jira",
+    "spec",
+    "coding-agent"
+  ],
+  "pi": {
+    "skills": [
+      "./skills"
+    ]
+  }
+}

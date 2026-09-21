@@ -1,6 +1,6 @@
 ---
 name: jira-issue-to-markdown
-description: Translate a Jira issue (Bug, Story, Task, or Spike) into a developer-ready markdown spec for a full-stack SaaS web app. Use this skill whenever the user references a Jira ticket, issue, or issue key (like "ABC-123") and wants it converted, translated, formatted, expanded, or cleaned up into markdown — including when they paste a Jira description, share a Jira URL, or want missing acceptance criteria, edge cases, definition of done, security/performance requirements, or dependencies filled in. Also use when the Jira description includes screenshots/images that contain requirement text, since this skill extracts that text. Trigger this even if the user doesn't say "markdown" explicitly but is clearly asking to turn a Jira ticket into a proper spec, user story, or developer-ready document. The original reporter is usually a non-technical client writing in business language, so part of the value is converting their intent into a structured BA-style spec.
+description: Translate a Jira issue (Bug, Story, Task, Epic, or Spike) into a developer-ready markdown spec for a full-stack SaaS web app. Use this skill whenever the user references a Jira ticket, issue, or issue key (like "ABC-123") and wants it converted, translated, formatted, expanded, or cleaned up into markdown — including when they paste a Jira description, share a Jira URL, or want missing acceptance criteria, edge cases, definition of done, security/performance requirements, or dependencies filled in. Also use when the Jira description includes screenshots/images that contain requirement text, since this skill extracts that text. Trigger this even if the user doesn't say "markdown" explicitly but is clearly asking to turn a Jira ticket into a proper spec…
 ---
 
 # Jira Issue → Markdown Spec
@@ -18,13 +18,41 @@ The key principles:
 
 ### 1. Get the issue content
 
-The user might give you the issue in several ways:
+If the user pasted the description text, or a screenshot of the Jira UI, use that directly and skip the ladder below.
 
-- **Issue key only** (e.g., "ABC-123") or **Jira URL** → fetch via the Atlassian MCP. The user has Atlassian connected, so call `Atlassian:getAccessibleAtlassianResources` to find the cloudId, then `Atlassian:getJiraIssue` with the key. Request `responseContentFormat: "markdown"` so the description comes back clean. Pull `attachment` and `comment` fields too.
-- **Pasted description text** → use it directly.
-- **Screenshot of the Jira UI** → use vision to read the issue from the image.
+If they gave only an issue key (e.g. "ABC-123") or a Jira URL, fetch it. Different coding-agent CLIs expose different tools, so work down this ladder and stop at the first rung available to you:
 
-If the user gave only a key and the Atlassian MCP isn't available or fails, ask them to paste the description rather than guessing.
+1. **Atlassian MCP.** If an Atlassian MCP server is connected, use its get-issue tool. The exposed name differs per host, so find it in your own tool list rather than assuming a name. If the tool needs a cloudId first, the same server exposes an accessible-resources tool; call that one first. Ask for a markdown response format when the tool supports it, and pull the `attachment` and `comment` fields too.
+
+2. **`acli`.** If `acli` is on `PATH`, run:
+
+   ```bash
+   acli jira workitem view <ISSUE-KEY>
+   ```
+
+3. **REST with stored credentials.** If `~/.agents/jira-credentials.json` exists and contains a `base_url`, call the Jira REST API directly:
+
+   ```bash
+   JIRA_EMAIL=$(jq -r .email ~/.agents/jira-credentials.json)
+   JIRA_TOKEN=$(jq -r .api_token ~/.agents/jira-credentials.json)
+   JIRA_BASE=$(jq -r .base_url ~/.agents/jira-credentials.json)
+   curl -s -u "$JIRA_EMAIL:$JIRA_TOKEN" \
+     "$JIRA_BASE/rest/api/3/issue/<ISSUE-KEY>?fields=summary,description,issuetype,attachment,comment,reporter"
+   ```
+
+   The credentials file has this shape:
+
+   ```json
+   {
+     "email": "you@example.com",
+     "api_token": "…",
+     "base_url": "https://your-site.atlassian.net"
+   }
+   ```
+
+   Skip this rung if the file is absent or has no `base_url` — without a site URL there is nothing to call.
+
+4. **Ask.** If no rung worked, ask the user to paste the description. Never guess at ticket content.
 
 ### 2. Identify the issue type → pick the template
 
@@ -36,19 +64,19 @@ Map the Jira `issuetype` field to the right template in `assets/`:
 | Story, User Story, Improvement, Feature | `assets/story-template.md` |
 | Task, Sub-task, Technical Task, Chore | `assets/task-template.md` |
 | Spike, Research, Investigation | `assets/spike-template.md` |
-| Epic | use `story-template.md` (note in the file that this is an epic-level summary; child tickets needed) |
+| Epic | `assets/epic-template.md` |
 
 If the type is unclear, ask the user — don't guess. The wrong template misses important sections.
 
 Read the template file before filling it in. Don't reproduce it from memory; copy from the file so the structure stays exact.
 
-### 3. Extract content from images (ALWAYS do this — do not skip)
+### 3. Extract content from images (always attempt — do not skip)
 
-Jira clients commonly paste screenshots that contain real requirements (mockups with annotations, error messages, lists of fields). Always read them. These must end up in the markdown.
+Jira clients commonly paste screenshots that contain real requirements (mockups with annotations, error messages, lists of fields). Always attempt to get them into the markdown. Not every coding-agent CLI can read images; when yours cannot, say so in the output rather than skipping the attachment silently.
 
 For each image attached to the issue or pasted by the user:
 
-1. Get the image into your context — either via the Atlassian MCP attachment URL, `acli jira`, or by asking the user to upload it if the MCP can't fetch protected attachments.
+1. Download the image using whichever rung of the step-1 ladder you used: the MCP attachment URL, `acli jira`, or the stored credentials below. If none can reach it, ask the user to upload it.
 2. If the attachment is protected and the MCP provides a `fields.attachment[i].content` URL, download it with Basic Auth using `~/.agents/jira-credentials.json`:
 
    ```bash
@@ -60,7 +88,7 @@ For each image attached to the issue or pasted by the user:
    ```
 
    Save downloaded images persistently beside the generated Jira docs (not `/tmp`) with the issue key as a filename prefix, so future tools can inspect them visually. If the user specified a different markdown output folder, save images in that same folder instead.
-3. Use vision to read every piece of text and describe what's depicted (UI element, flow diagram, error dialog, table, etc.).
+3. If you can read images, read every piece of text in it and describe what's depicted (UI element, flow diagram, error dialog, table, etc.). If you cannot read images in this host, keep the downloaded file and the relative link, and write `[Image N — downloaded, not read: no image support in this host]` where the description would go. Never describe an image you have not seen.
 4. Reference downloaded images in the markdown with relative paths when available:
 
    ```markdown
@@ -159,94 +187,7 @@ After saving, report the absolute path of the file to the user.
 
 ## Worked example
 
-**Input — Jira issue ABC-456:**
-
-> **Title:** Customers can't see their invoices on mobile
->
-> **Type:** Bug
->
-> **Description:** Hey — multiple customers have emailed support saying when they open the billing page on their phone they just see a blank screen. It works fine on my laptop. This is happening to paying customers so it's pretty urgent. Attached a screenshot from one of them.
->
-> **Attachment:** `customer-screenshot.png` — shows an iPhone Safari screen with the company header and footer visible but a large blank white area in the middle where the invoice list should be.
-
-**Output — `2026-04-28-ABC-456-customers-cant-see-invoices-on-mobile.md`:**
-
-```markdown
-# ABC-456 — Customers can't see their invoices on mobile
-
-**Type:** Bug
-**Reporter:** [client name]
-**Source:** [Jira URL]
-
----
-
-## Summary
-The billing page renders blank in the invoice list area on mobile browsers, while desktop renders correctly.
-
-## User Story Context
-Paying customers viewing the billing page on mobile devices.
-
-## Steps to Reproduce
-> 💡 _Inferred from the screenshot and description — please verify exact steps with the reporter._
-1. Log in as a paying customer on a mobile browser (iOS Safari confirmed; other mobile browsers unknown).
-2. Navigate to the billing page.
-3. Observe the page area where the invoice list should render.
-
-## Expected Result
-The invoice list renders on mobile the same way (or a responsive equivalent of) the desktop view.
-
-## Actual Result
-The header and footer render correctly, but the invoice list area is blank. (Confirmed via attached customer screenshot — see "Content extracted from attached images" below.)
-
-## Environment
-- Browser & version: iOS Safari (version unknown — _to be confirmed with reporter_)
-- OS & device: iPhone (model unknown)
-- User account / tenant: Multiple paying customers — exact accounts to confirm
-- Frequency: [x] Always (per multiple customer reports)  [ ] Intermittent  [ ] One-time
-
-## Severity
-[ ] Critical  [x] High (feature broken for paying customers on a primary device class)  [ ] Medium  [ ] Low
-
-## Acceptance Criteria
-- [ ] Invoice list renders correctly on iOS Safari (latest 2 versions)
-- [ ] Invoice list renders correctly on Android Chrome (latest 2 versions) _(inferred)_
-- [ ] No regression on desktop browsers _(inferred)_
-- [ ] Layout is usable at 375px viewport width (iPhone SE) _(inferred)_
-
-## Edge Cases to Verify
-> 💡 _Inferred — please verify scope with the reporter._
-- Customers with zero invoices (empty state on mobile)
-- Customers with many invoices (pagination/scroll on mobile)
-- Free-tier users (does the page even apply?)
-- Slow mobile connection (loading state visible?)
-
-## Security / Performance Flags
-- [ ] Does this expose any user data? — No additional exposure expected
-- [x] Does this affect performance under load? — Mobile rendering may be tied to payload size; check
-- [ ] Does this bypass any permission checks? — No
-
-## Dependencies / Blockers
-- Blocked by: None known _(inferred)_
-- Related tickets: Search Jira for prior mobile/billing tickets
-
-## Definition of Done
-- [ ] Fix implemented and peer-reviewed
-- [ ] Unit tests cover the fix
-- [ ] QA verified on iOS Safari and Android Chrome on staging
-- [ ] No new errors in logs post-deploy
-- [ ] Product owner sign-off
-
-## Content extracted from attached images
-
-### `customer-screenshot.png` — iPhone Safari billing page
-The image shows an iPhone Safari window. The company logo and primary navigation are visible at the top. The footer (with copyright and links) is visible at the bottom. The center area, which on desktop contains the invoice list table, is entirely blank/white. No error message is visible. The URL bar shows the billing page route.
-```
-
-Notice in the example:
-- Client-stated content (severity = High because they said "paying customers... pretty urgent") is unmarked.
-- Things inferred from a SaaS bug-fix lens (Android Chrome support, empty/many-invoices edge cases, no permission impact) are clearly tagged.
-- The image content is described, not just OCR'd.
-- Things genuinely unknown (browser version, account IDs) are flagged as needing reporter confirmation rather than fabricated.
+`references/worked-example.md` walks through a complete conversion: a vague client-written bug report with one screenshot, and the filled markdown spec it becomes. Read it when you are unsure how much to infer or how heavily to mark inferred content.
 
 ---
 
@@ -255,6 +196,6 @@ Notice in the example:
 - **Empty description, only images:** the markdown's "Summary" comes from the image content; flag everything else as needing reporter input.
 - **Issue is in a non-English language:** preserve original language quotes in the Background section, but write the structured sections (AC, edge cases, DoD) in English (or in whatever language the user requests).
 - **Issue type is custom or unrecognized:** ask the user which template fits best; don't auto-pick.
-- **Multiple issues at once:** produce one markdown file per issue. Use `present_files` with all of them.
+- **Multiple issues at once:** produce one markdown file per issue, and report the absolute path of every file you wrote.
 - **Comments contain the real requirements:** common when clients clarify in comments. Pull comment content too and merge into the appropriate section, attributing as needed (e.g., "Per follow-up comment from [reporter]: ...").
 - **Atlassian MCP returns the description in ADF (Atlassian Document Format) JSON:** request `responseContentFormat: "markdown"` to avoid hand-parsing ADF. If markdown isn't available for the field, fall back to ADF and convert.

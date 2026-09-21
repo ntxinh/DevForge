@@ -1,0 +1,39 @@
+{
+  "name": "devforge",
+  "version": "0.1.0",
+  "description": "DevForge skills for coding agents: turn a Jira issue into a developer-ready markdown spec",
+  "author": {
+    "name": "ntxinh",
+    "email": "nguyentrucxjnh@gmail.com",
+    "url": "https://github.com/ntxinh"
+  },
+  "homepage": "https://github.com/ntxinh/DevForge",
+  "repository": "https://github.com/ntxinh/DevForge",
+  "license": "MIT",
+  "keywords": [
+    "skills",
+    "jira",
+    "spec",
+    "requirements",
+    "business-analysis"
+  ],
+  "skills": "./skills/",
+  "hooks": {},
+  "interface": {
+    "displayName": "DevForge",
+    "shortDescription": "Turn a Jira issue into a developer-ready markdown spec",
+    "longDescription": "DevForge converts a Jira issue — Bug, Story, Task, Spike, or Epic — into a structured markdown spec a developer can act on, filling in acceptance criteria, edge cases, security and performance flags, dependencies, and definition of done, and clearly marking everything it inferred.",
+    "developerName": "ntxinh",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Turn ABC-123 into a markdown spec.",
+      "Here's a Jira ticket description — make it developer-ready."
+    ],
+    "websiteURL": "https://github.com/ntxinh/DevForge"
+  }
+}
