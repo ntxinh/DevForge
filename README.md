@@ -27,9 +27,14 @@ Reinstall with the same command to update.
 
 ### Codex
 
-Clone the repository and add it as a local plugin; `.codex-plugin/plugin.json`
-points Codex at `./skills/`. DevForge is not listed in the Codex plugin
-marketplace.
+Clone the repository, then add it as a local marketplace and install:
+
+```bash
+codex plugin marketplace add /path/to/DevForge
+codex plugin add devforge@devforge-marketplace
+```
+
+DevForge is not listed in the Codex plugin marketplace.
 
 ### Devin CLI
 
