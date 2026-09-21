@@ -18,13 +18,41 @@ The key principles:
 
 ### 1. Get the issue content
 
-The user might give you the issue in several ways:
+If the user pasted the description text, or a screenshot of the Jira UI, use that directly and skip the ladder below.
 
-- **Issue key only** (e.g., "ABC-123") or **Jira URL** → fetch via the Atlassian MCP. The user has Atlassian connected, so call `Atlassian:getAccessibleAtlassianResources` to find the cloudId, then `Atlassian:getJiraIssue` with the key. Request `responseContentFormat: "markdown"` so the description comes back clean. Pull `attachment` and `comment` fields too.
-- **Pasted description text** → use it directly.
-- **Screenshot of the Jira UI** → use vision to read the issue from the image.
+If they gave only an issue key (e.g. "ABC-123") or a Jira URL, fetch it. Different coding-agent CLIs expose different tools, so work down this ladder and stop at the first rung available to you:
 
-If the user gave only a key and the Atlassian MCP isn't available or fails, ask them to paste the description rather than guessing.
+1. **Atlassian MCP.** If an Atlassian MCP server is connected, use its get-issue tool. The exposed name differs per host, so find it in your own tool list rather than assuming a name. If the tool needs a cloudId first, the same server exposes an accessible-resources tool; call that one first. Ask for a markdown response format when the tool supports it, and pull the `attachment` and `comment` fields too.
+
+2. **`acli`.** If `acli` is on `PATH`, run:
+
+   ```bash
+   acli jira workitem view <ISSUE-KEY>
+   ```
+
+3. **REST with stored credentials.** If `~/.agents/jira-credentials.json` exists and contains a `base_url`, call the Jira REST API directly:
+
+   ```bash
+   JIRA_EMAIL=$(jq -r .email ~/.agents/jira-credentials.json)
+   JIRA_TOKEN=$(jq -r .api_token ~/.agents/jira-credentials.json)
+   JIRA_BASE=$(jq -r .base_url ~/.agents/jira-credentials.json)
+   curl -s -u "$JIRA_EMAIL:$JIRA_TOKEN" \
+     "$JIRA_BASE/rest/api/3/issue/<ISSUE-KEY>?fields=summary,description,issuetype,attachment,comment,reporter"
+   ```
+
+   The credentials file has this shape:
+
+   ```json
+   {
+     "email": "you@example.com",
+     "api_token": "…",
+     "base_url": "https://your-site.atlassian.net"
+   }
+   ```
+
+   Skip this rung if the file is absent or has no `base_url` — without a site URL there is nothing to call.
+
+4. **Ask.** If no rung worked, ask the user to paste the description. Never guess at ticket content.
 
 ### 2. Identify the issue type → pick the template
 
@@ -42,13 +70,13 @@ If the type is unclear, ask the user — don't guess. The wrong template misses 
 
 Read the template file before filling it in. Don't reproduce it from memory; copy from the file so the structure stays exact.
 
-### 3. Extract content from images (ALWAYS do this — do not skip)
+### 3. Extract content from images (always attempt — do not skip)
 
-Jira clients commonly paste screenshots that contain real requirements (mockups with annotations, error messages, lists of fields). Always read them. These must end up in the markdown.
+Jira clients commonly paste screenshots that contain real requirements (mockups with annotations, error messages, lists of fields). Always attempt to get them into the markdown. Not every coding-agent CLI can read images; when yours cannot, say so in the output rather than skipping the attachment silently.
 
 For each image attached to the issue or pasted by the user:
 
-1. Get the image into your context — either via the Atlassian MCP attachment URL, `acli jira`, or by asking the user to upload it if the MCP can't fetch protected attachments.
+1. Download the image using whichever rung of the step-1 ladder you used: the MCP attachment URL, `acli jira`, or the stored credentials below. If none can reach it, ask the user to upload it.
 2. If the attachment is protected and the MCP provides a `fields.attachment[i].content` URL, download it with Basic Auth using `~/.agents/jira-credentials.json`:
 
    ```bash
@@ -60,7 +88,7 @@ For each image attached to the issue or pasted by the user:
    ```
 
    Save downloaded images persistently beside the generated Jira docs (not `/tmp`) with the issue key as a filename prefix, so future tools can inspect them visually. If the user specified a different markdown output folder, save images in that same folder instead.
-3. Use vision to read every piece of text and describe what's depicted (UI element, flow diagram, error dialog, table, etc.).
+3. If you can read images, read every piece of text in it and describe what's depicted (UI element, flow diagram, error dialog, table, etc.). If you cannot read images in this host, keep the downloaded file and the relative link, and write `[Image N — downloaded, not read: no image support in this host]` where the description would go. Never describe an image you have not seen.
 4. Reference downloaded images in the markdown with relative paths when available:
 
    ```markdown
@@ -255,6 +283,6 @@ Notice in the example:
 - **Empty description, only images:** the markdown's "Summary" comes from the image content; flag everything else as needing reporter input.
 - **Issue is in a non-English language:** preserve original language quotes in the Background section, but write the structured sections (AC, edge cases, DoD) in English (or in whatever language the user requests).
 - **Issue type is custom or unrecognized:** ask the user which template fits best; don't auto-pick.
-- **Multiple issues at once:** produce one markdown file per issue. Use `present_files` with all of them.
+- **Multiple issues at once:** produce one markdown file per issue, and report the absolute path of every file you wrote.
 - **Comments contain the real requirements:** common when clients clarify in comments. Pull comment content too and merge into the appropriate section, attributing as needed (e.g., "Per follow-up comment from [reporter]: ...").
 - **Atlassian MCP returns the description in ADF (Atlassian Document Format) JSON:** request `responseContentFormat: "markdown"` to avoid hand-parsing ADF. If markdown isn't available for the field, fall back to ADF and convert.
