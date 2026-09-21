@@ -36,11 +36,15 @@ esac
 
 echo "$current -> $new"
 
+[ -f .version-bump.json ] && jq empty .version-bump.json 2>/dev/null \
+  || { echo ".version-bump.json: missing or invalid JSON" >&2; exit 1; }
+
 while IFS=$'\t' read -r file field; do
   [ -f "$file" ] || { echo "$file: missing, skipped" >&2; continue; }
   jq_path=".$(printf '%s' "$field" | sed -E 's/\.([0-9]+)/[\1]/g')"
   tmp=$(mktemp)
-  jq --arg v "$new" "$jq_path = \$v" "$file" > "$tmp" && mv "$tmp" "$file"
+  jq --arg v "$new" "$jq_path = \$v" "$file" > "$tmp" \
+    && chmod --reference="$file" "$tmp" && mv "$tmp" "$file"
   echo "$file: $field -> $new"
 done < <(jq -r '.files[] | "\(.path)\t\(.field)"' .version-bump.json)
 
