@@ -8,16 +8,16 @@
 DevForge holds one skill, `jira-issue-to-markdown`, and nothing that lets a coding
 agent install it. The skill itself is written for Claude Code: it names Atlassian MCP
 tools directly and calls `present_files`, neither of which exists in Codex, Devin,
-OpenCode, Pi, or Antigravity.
+OpenCode, Pi, Oh My Pi, or Antigravity.
 
-The goal is a plugin that installs on all six CLIs from a self-hosted marketplace,
+The goal is a plugin that installs on all seven CLIs from a self-hosted marketplace,
 carrying skills that work the same on each.
 
 ## Scope
 
 **In scope**
 
-- Plugin manifests for Claude Code, Codex, Devin CLI, OpenCode, Pi, Antigravity.
+- Plugin manifests for Claude Code, Codex, Devin CLI, OpenCode, Pi, Oh My Pi, Antigravity.
 - A self-hosted marketplace in this repository.
 - Rework of `jira-issue-to-markdown` for host portability, plus a trim and an epic template.
 - Version synchronization across manifests, a manifest test, and CI that runs it.
@@ -82,8 +82,10 @@ Files deliberately absent, and why:
 - `.pi/extensions/*.ts` — in `superpowers` that extension exists only to inject the
   bootstrap. Pi discovers skills from `package.json`.
 - `.cursor-plugin/`, `.kimi-plugin/`, `.muse-plugin/`, `.hermes-plugin/`,
-  `gemini-extension.json` — hosts outside the six.
+  `gemini-extension.json` — hosts outside the seven.
 - `.antigravity-plugin/` — Antigravity reads the Claude-shaped manifest.
+- `.omp-plugin/marketplace.json` — omp reads `.claude-plugin/marketplace.json` as its
+  marketplace-catalog fallback, so a second catalog would only duplicate it.
 - `.agents/plugins/marketplace.json` — added only if the Devin smoke test shows
   `devin plugins install` requires it.
 
@@ -97,6 +99,7 @@ Files deliberately absent, and why:
 | Devin CLI | `.devin-plugin/plugin.json` | `skills/` by convention | `devin plugins install ntxinh/DevForge` |
 | OpenCode | `.opencode/plugins/devforge.js`, `index.js`, `package.json` `main` | the JS plugin registers `skills/` | config `"plugins": ["devforge@git+https://github.com/ntxinh/DevForge.git"]` |
 | Pi | `package.json` `"pi": {"skills": ["./skills"]}` | declarative | `pi install git:github.com/ntxinh/DevForge` |
+| Oh My Pi | `.claude-plugin/marketplace.json` (omp's fallback catalog) | `skills/` at plugin root, by convention | `omp plugin marketplace add ntxinh/DevForge` then `omp plugin install devforge@devforge-marketplace` |
 
 ### OpenCode plugin
 
@@ -215,12 +218,13 @@ It exits non-zero on the first failure and names the file and field.
 
 ### Manual smoke test
 
-`claude`, `codex`, `devin`, `opencode`, and `agy` are installed on the development
-machine. Each is installed from a local checkout or the pushed repository, and the check
-is that `jira-issue-to-markdown` appears in that host's skill list and can be invoked.
+`claude`, `codex`, `devin`, `opencode`, `agy`, and `omp` are installed on the
+development machine. Each is installed from a local checkout or the pushed
+repository, and the check is that `jira-issue-to-markdown` appears in that host's
+skill list and can be invoked.
 
-`pi` is not installed. Pi ships on its declarative manifest and is marked untested in the
-README until someone verifies it.
+`pi` is not installed. Pi ships on its declarative manifest and is marked untested
+in the README until someone verifies it.
 
 ## Risks
 
@@ -236,8 +240,9 @@ README until someone verifies it.
 
 ## Success criteria
 
-1. `jira-issue-to-markdown` is discoverable and invocable in Claude Code, Codex, Devin,
-   OpenCode, and Antigravity, installed through each host's own plugin command.
+1. `jira-issue-to-markdown` is discoverable and invocable in Claude Code, Codex,
+   Devin, OpenCode, Oh My Pi, and Antigravity, installed through each host's own
+   plugin command.
 2. The Claude Code marketplace flow works from a clean profile:
    `/plugin marketplace add ntxinh/DevForge`, then
    `/plugin install devforge@devforge-marketplace`.

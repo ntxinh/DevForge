@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Package DevForge as a skill pack installable on Claude Code, Codex, Devin CLI, OpenCode, Pi, and Antigravity from a self-hosted marketplace, with the `jira-issue-to-markdown` skill reworked so it works on every one of them.
+**Goal:** Package DevForge as a skill pack installable on Claude Code, Codex, Devin CLI, OpenCode, Pi, Oh My Pi, and Antigravity from a self-hosted marketplace, with the `jira-issue-to-markdown` skill reworked so it works on every one of them.
 
-**Architecture:** One `skills/` directory is the single source of truth. Each host gets the smallest manifest that points at it — JSON manifests for Claude Code/Antigravity, Codex, and Devin; a declarative `pi` block in `package.json`; and one dependency-free JavaScript plugin for OpenCode, which has no convention-based skill discovery. `.version-bump.json` maps every version field so one script keeps them in step, and shell tests assert the manifests and skills stay valid.
+**Architecture:** One `skills/` directory is the single source of truth. Each host gets the smallest manifest that points at it — JSON manifests for Claude Code/Antigravity, Codex, and Devin; a declarative `pi` block in `package.json`; and one dependency-free JavaScript plugin for OpenCode, which has no convention-based skill discovery. Oh My Pi needs no manifest of its own: it discovers `skills/` by convention and reads `.claude-plugin/marketplace.json` as its marketplace-catalog fallback. `.version-bump.json` maps every version field so one script keeps them in step, and shell tests assert the manifests and skills stay valid.
 
 **Tech Stack:** JSON manifests, Bash + `jq` (tests and version script), Node.js ESM (OpenCode plugin only), GitHub Actions.
 
@@ -1390,7 +1390,7 @@ git commit -m "feat: add an epic template to jira-issue-to-markdown"
 No automated test. The check is that every host in the spec's matrix appears with an install command:
 
 ```bash
-for host in "Claude Code" "Antigravity" "Codex" "Devin" "OpenCode" "Pi"; do
+for host in "Claude Code" "Antigravity" "Codex" "Devin" "OpenCode" "Pi" "Oh My Pi"; do
   grep -qF -- "$host" README.md || echo "MISSING: $host"
 done
 ```
@@ -1398,7 +1398,7 @@ done
 - [ ] **Step 2: Run test to verify it fails**
 
 Run the loop above.
-Expected: `grep: README.md: No such file or directory` six times and six `MISSING:` lines.
+Expected: `grep: README.md: No such file or directory` seven times and seven `MISSING:` lines.
 
 - [ ] **Step 3: Write minimal implementation**
 
@@ -1465,6 +1465,16 @@ pi install git:github.com/ntxinh/DevForge
 
 **Untested.** Pi support is the declarative `pi.skills` entry in
 `package.json`; nobody has run it yet. Reports welcome.
+
+### Oh My Pi
+
+```bash
+omp plugin marketplace add ntxinh/DevForge
+omp plugin install devforge@devforge-marketplace
+```
+
+omp reads `.claude-plugin/marketplace.json` as its catalog and discovers
+`skills/` by convention. For a local checkout: `omp plugin link <path>`.
 
 ## Using the Jira skill
 
@@ -1543,7 +1553,7 @@ git commit -m "docs: add README with the per-CLI install matrix"
 - Consumes: every manifest and the README from Tasks 1–3 and 9.
 - Produces: `docs/smoke-test.md`, the recorded result per host, which is the evidence that the plugin actually installs.
 
-This task is manual. `claude`, `codex`, `devin`, `opencode`, and `agy` are installed on this machine; `pi` is not.
+This task is manual. `claude`, `codex`, `devin`, `opencode`, `agy`, and `omp` are installed on this machine; `pi` is not.
 
 - [ ] **Step 1: Write the checklist**
 
@@ -1566,6 +1576,7 @@ be invoked.
 | Codex | local plugin install from this checkout | | | |
 | Devin CLI | `devin plugins install ntxinh/DevForge` | | | |
 | OpenCode | config `"plugins": ["<absolute path to this checkout>"]` | | | |
+| Oh My Pi | `omp plugin marketplace add <local path or ntxinh/DevForge>` then `omp plugin install devforge@devforge-marketplace`; for a checkout, `omp plugin link <path>` | | | |
 | Pi | `pi install git:github.com/ntxinh/DevForge` | | | not installed locally |
 
 ## Notes
@@ -1647,6 +1658,7 @@ git commit -m "docs: record install smoke test results per host"
 | Pi declarative skills entry | 1 |
 | Codex manifest with explicit `skills` path | 2 |
 | Devin manifest | 2 |
+| Oh My Pi via the Claude-shaped marketplace fallback | 1 (file), 9 (docs), 10 (verified) |
 | Antigravity via the Claude-shaped manifest | 1 (file), 10 (verified) |
 | OpenCode plugin, V1 + V2, bootstrap stripped | 3 |
 | `.version-bump.json` mapping five fields | 1, 2 |
@@ -1660,7 +1672,7 @@ git commit -m "docs: record install smoke test results per host"
 | Worked example moved to `references/` | 7 |
 | Epic template | 8 |
 | Per-CLI install matrix | 9 |
-| Manual smoke test across five hosts, Pi flagged untested | 10 |
+| Manual smoke test across six hosts, Pi flagged untested | 10 |
 | Risk: Devin marketplace file undecided | 10 |
 
 No spec requirement is unclaimed.
