@@ -44,7 +44,8 @@ while IFS=$'\t' read -r file field; do
   jq_path=".$(printf '%s' "$field" | sed -E 's/\.([0-9]+)/[\1]/g')"
   tmp=$(mktemp)
   jq --arg v "$new" "$jq_path = \$v" "$file" > "$tmp" \
-    && chmod --reference="$file" "$tmp" && mv "$tmp" "$file"
+    && chmod "$(stat -c %a "$file" 2>/dev/null || stat -f %Lp "$file")" "$tmp" \
+    && mv "$tmp" "$file"
   echo "$file: $field -> $new"
 done < <(jq -r '.files[] | "\(.path)\t\(.field)"' .version-bump.json)
 

@@ -28,6 +28,8 @@ EXPECTED_VERSION=$(jq -r '.version // empty' package.json)
 
 # 1. Version parity across every mapped field
 [ -f .version-bump.json ] || { echo "FAIL: .version-bump.json is missing" >&2; exit 1; }
+jq empty .version-bump.json 2>/dev/null \
+  || { echo "FAIL: .version-bump.json: invalid JSON" >&2; exit 1; }
 while IFS=$'\t' read -r file field; do
   if [ ! -f "$file" ]; then
     fail "$file: listed in .version-bump.json but missing"
