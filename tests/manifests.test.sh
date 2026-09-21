@@ -48,7 +48,7 @@ while IFS=$'\t' read -r file field; do
 done < <(jq -r '.files[] | "\(.path)\t\(.field)"' .version-bump.json)
 
 # 2. Required identity fields on every plugin manifest present on disk
-for manifest in .claude-plugin/plugin.json .codex-plugin/plugin.json .devin-plugin/plugin.json; do
+for manifest in .claude-plugin/plugin.json .codex-plugin/plugin.json .devin-plugin/plugin.json .cursor-plugin/plugin.json; do
   [ -f "$manifest" ] || continue
   for field in .name .description .version .author.name .author.email .license .homepage .repository; do
     value=$(jq -r "$field // empty" "$manifest")

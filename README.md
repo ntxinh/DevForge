@@ -64,6 +64,24 @@ pi install git:github.com/ntxinh/DevForge
 **Untested.** Pi support is the declarative `pi.skills` entry in
 `package.json`; nobody has run it yet. Reports welcome.
 
+### Oh My Pi
+
+```bash
+omp plugin marketplace add ntxinh/DevForge
+omp plugin install devforge@devforge-marketplace
+```
+
+omp reads `.claude-plugin/marketplace.json` as its catalog and discovers
+`skills/` by convention. For a local checkout: `omp plugin link <path>`.
+
+### Cursor
+
+Clone the repository and add it as a local plugin; `.cursor-plugin/plugin.json`
+points Cursor at `./skills/`. DevForge is not listed in the Cursor plugin
+marketplace.
+
+**Untested.** No `cursor` binary on the development machine; reports welcome.
+
 ## Using the Jira skill
 
 Ask your agent to convert a ticket:
